@@ -9,25 +9,41 @@ import (
 )
 
 type Request struct {
-	Method        string
+	ReqMethod     Method
 	URI           string
 	Protocal      string
 	ContentType   string
 	ContentLength int
+	Param         map[string]string
 	Attr          map[string]interface{}
 	Body          *[]byte
 }
 
 func NewRequest() *Request {
 	return &Request{
-		Method:        "",
+		ReqMethod:     "",
 		URI:           "",
 		Protocal:      DefaultProtocal,
 		ContentType:   DefaultContentType,
 		ContentLength: 0,
+		Param:         map[string]string{},
 		Attr:          map[string]interface{}{},
 		Body:          &[]byte{},
 	}
+}
+
+func (req *Request) extractURIAndLoadParams(rawURI string) (URI string) {
+	words := strings.Split(rawURI, "?")
+	URI = words[0]
+	if len(words) == 1 {
+		return URI
+	}
+	paramWords := SplitConvertFilter(words[1], "&", nil, nil)
+	for _, v := range paramWords {
+		pa := strings.Split(v, "=")
+		req.Param[pa[0]] = pa[1]
+	}
+	return URI
 }
 func (req *Request) readHeader(rd io.Reader) (err error) {
 	reader := bufio.NewReader(rd)
@@ -47,8 +63,8 @@ func (req *Request) readHeader(rd io.Reader) (err error) {
 		}
 		if req.URI == "" {
 			tokens := SplitConvertFilter(strings.ToLower(string(buff)), " ", nil, func(s string) bool { return s != "" })
-			req.Method = tokens[0]
-			req.URI = tokens[1]
+			req.ReqMethod = Method(tokens[0])
+			req.URI = req.extractURIAndLoadParams(tokens[1])
 			if len(tokens) > 2 {
 				req.Protocal = tokens[2]
 			}

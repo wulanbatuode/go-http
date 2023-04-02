@@ -1,5 +1,11 @@
 package handmadehttp
 
+type Method string
+
+var (
+	ReqMethodGet Method = "get"
+)
+
 const (
 	MaxChanSize = 1000
 )

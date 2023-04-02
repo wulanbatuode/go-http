@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"handmadehttp/pkg/handmadehttp"
 	"time"
 
@@ -12,7 +13,7 @@ func main() {
 	s := handmadehttp.NewServer("tcp", ":8080", 5*time.Second)
 	s.UpdateHandler("/echo",
 		func(req *handmadehttp.Request, res *handmadehttp.Response) error {
-			res.SetContent([]byte(req.URI))
+			res.SetContent([]byte(fmt.Sprintf("%s %s", req.URI, req.Param)))
 			return nil
 		})
 	err := s.ListenAndServe()

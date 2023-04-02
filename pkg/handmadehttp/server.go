@@ -9,22 +9,23 @@ import (
 
 // TODO: howto unit test?
 type Server struct {
-	network   string
-	addr      string
-	timeout   time.Duration
-	listener  net.Listener
-	connChan  chan net.Conn
-	mutplexer *Multiplexer
+	network      string
+	addr         string
+	timeout      time.Duration
+	listener     net.Listener
+	connChan     chan net.Conn
+	mutplexerGet *Multiplexer
+	// TODO: add suport to other methods
 }
 
 func NewServer(network, addr string, timeout time.Duration) *Server {
 	return &Server{
-		network:   network,
-		addr:      addr,
-		timeout:   timeout,
-		listener:  nil,
-		connChan:  nil,
-		mutplexer: NewMultiplexer(nil),
+		network:      network,
+		addr:         addr,
+		timeout:      timeout,
+		listener:     nil,
+		connChan:     nil,
+		mutplexerGet: NewMultiplexer(nil),
 	}
 }
 
@@ -70,9 +71,16 @@ func (s *Server) HandleConns() {
 			request := NewRequest()
 			request.Read(conn)
 			response := NewResponse(200)
-			handler := s.mutplexer.findHandler(request.URI)
-			if err := (*handler)(request, response); err != nil {
-				slog.Warn("fail to handle with %s, err %s", *handler, err)
+			if request.ReqMethod != ReqMethodGet {
+				// 501: not implemented
+				response.StatusCode = 501
+				slog.Warn("not implemtmented method", request.ReqMethod)
+			} else {
+				handler := s.mutplexerGet.findHandler(request.URI)
+				if err := (*handler)(request, response); err != nil {
+					slog.Warn("fail to handle with %s, err %s", *handler, err)
+				}
+
 			}
 			buff := response.ToByte()
 			n, err := conn.Write(buff)
@@ -106,7 +114,7 @@ func (s *Server) Stop() {
 	}
 }
 func (s *Server) UpdateHandler(URI string, fn HandlerFunc) {
-	s.mutplexer.UpdateHandler(URI, fn)
+	s.mutplexerGet.UpdateHandler(URI, fn)
 }
 func (s *Server) ListenAndServe() error {
 	err := s.start()
