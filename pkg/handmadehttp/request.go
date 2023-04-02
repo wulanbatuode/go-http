@@ -1,4 +1,4 @@
-package main
+package handmadehttp
 
 import (
 	"bufio"
@@ -29,7 +29,7 @@ func NewRequest() *Request {
 		Body:          &[]byte{},
 	}
 }
-func (req *Request) ReadHeader(rd io.Reader) (err error) {
+func (req *Request) readHeader(rd io.Reader) (err error) {
 	reader := bufio.NewReader(rd)
 	buff := make([]byte, 0, BuffSize)
 	for i := 0; i < MaxHeaderLine; i++ {
@@ -46,7 +46,7 @@ func (req *Request) ReadHeader(rd io.Reader) (err error) {
 			continue
 		}
 		if req.URI == "" {
-			tokens := SplitConvertFilter(string(buff), " ", nil, func(s string) bool { return s != "" })
+			tokens := SplitConvertFilter(strings.ToLower(string(buff)), " ", nil, func(s string) bool { return s != "" })
 			req.Method = tokens[0]
 			req.URI = tokens[1]
 			if len(tokens) > 2 {
@@ -55,19 +55,19 @@ func (req *Request) ReadHeader(rd io.Reader) (err error) {
 			buff = buff[:0]
 		}
 		if len(buff) > 0 {
-			tokens := SplitConvertFilter(string(buff), ":", nil, func(s string) bool { return s != "" })
+			tokens := SplitConvertFilter(strings.ToLower(string(buff)), ":", nil, func(s string) bool { return s != "" })
 			if len(tokens) != 2 {
 				err = fmt.Errorf("%w with attr %s", ErrBadRequst, tokens)
 				return err
 			}
 			switch tokens[0] {
-			case RequestKeyContentLength:
+			case KeyContentLength:
 				length, err := strconv.Atoi(strings.Trim(tokens[1], " "))
 				if err != nil {
 					break
 				}
 				req.ContentLength = length
-			case RequestKeyContentType:
+			case KeyContentType:
 				req.ContentType = strings.Trim(tokens[1], " ")
 			default:
 				req.Attr[strings.Trim(tokens[0], " ")] = strings.Trim(tokens[1], " ")
@@ -78,15 +78,30 @@ func (req *Request) ReadHeader(rd io.Reader) (err error) {
 	return err
 }
 
-func (req *Request) ReadBody(rd io.Reader) (err error) {
-	buff := make([]byte, 0, req.ContentLength)
+func (req *Request) readBody(rd io.Reader) (err error) {
+	buff := make([]byte, req.ContentLength)
 	n, err := rd.Read(buff)
-	if err != nil {
+	if err != nil && err != io.EOF {
 		return err
 	}
 	if n != req.ContentLength {
 		err = fmt.Errorf("%w, expect %d length, got %d", ErrBadRequst, req.ContentLength, n)
-		return
+		return err
+	}
+	req.Body = &buff
+	return nil
+}
+
+func (req *Request) Read(rd io.Reader) (err error) {
+	reader := bufio.NewReader(rd)
+	err = req.readHeader(reader)
+	if err != nil {
+		return err
+	}
+	err = req.readBody(reader)
+
+	if err != nil {
+		return err
 	}
 	return nil
 }

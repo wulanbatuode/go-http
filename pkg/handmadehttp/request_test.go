@@ -1,4 +1,4 @@
-package main
+package handmadehttp
 
 import (
 	"bytes"
@@ -15,14 +15,15 @@ func TestRequestRead(t *testing.T) {
 		"\r\n" +
 		"Hello, World!")
 
-	req := NewRequest()
 	rd := bytes.NewReader(input)
-	err := req.ReadHeader(rd)
+	req := NewRequest()
+	err := req.Read(rd)
 	assert.Equal(t, nil, err)
 	assert.Equal(t, 13, req.ContentLength)
 	assert.Equal(t, DefaultContentType, req.ContentType)
 	assert.Equal(t, "HTTP/1.1", req.Protocal)
 	assert.Equal(t, "curl/7.16.3 libcurl/7.16.3 OpenSSL/0.9.7l zlib/1.2.3", req.Attr["User-Agent"])
 	assert.Equal(t, "en, mi", req.Attr["Accept-Language"])
+	assert.Equal(t, "Hello, World!", string(*req.Body))
 
 }
