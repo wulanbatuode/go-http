@@ -3,7 +3,7 @@ package handmadehttp
 type Method string
 
 var (
-	ReqMethodGet Method = "get"
+	ReqMethodGet Method = "GET"
 )
 
 const (
@@ -12,55 +12,55 @@ const (
 
 const (
 	DefaultProtocal    = "HTTP/1.1"
-	DefaultContentType = "text/html; charset=UTF-8"
+	DefaultContentType = "TEXT/HTML; CHARSET=UTF-8"
 	BuffSize           = 1024
 	MaxHeaderLine      = 1024
 
-	KeyContentType   = "Content-Type"
-	KeyContentLength = "Content-Length"
+	KeyContentType   = "CONTENT-TYPE"
+	KeyContentLength = "CONTENT-LENGTH"
 
 	LineBreak = "\r\n"
 )
 
 var CodeToStatus = map[int]string{
-	100: "Continue",
-	101: "Switching Protocols",
+	100: "CONTINUE",
+	101: "SWITCHING PROTOCOLS",
 	200: "OK",
-	201: "Created",
-	202: "Accepted",
-	203: "Non-Authoritative Information",
-	204: "No Content",
-	205: "Reset Content",
-	206: "Partial Content",
-	300: "Multiple Choices",
-	301: "Moved Permanently",
-	302: "Found",
-	303: "See Other",
-	304: "Not Modified",
-	305: "Use Proxy",
-	307: "Temporary Redirect",
-	400: "Bad Request",
-	401: "Unauthorized",
-	402: "Payment Required",
-	403: "Forbidden",
-	404: "Not Found",
-	405: "Method Not Allowed",
-	406: "Not Acceptable",
-	407: "Proxy Authentication Required",
-	408: "Request Time-Out",
-	409: "Conflict",
-	410: "Gone",
-	411: "Length Required",
-	412: "Precondition Failed",
-	413: "Request Entity Too Large",
-	414: "Request-Uri Too Large",
-	415: "Unsupported Media Type",
-	416: "Requested Range Not Satisfiable",
-	417: "Expectation Failed",
-	500: "Internal Server Error",
-	501: "Not Implemented",
-	502: "Bad Gateway",
-	503: "Service Unavailable",
-	504: "Gateway Time-Out",
-	505: "Http Version Not Supported",
+	201: "CREATED",
+	202: "ACCEPTED",
+	203: "NON-AUTHORITATIVE INFORMATION",
+	204: "NO CONTENT",
+	205: "RESET CONTENT",
+	206: "PARTIAL CONTENT",
+	300: "MULTIPLE CHOICES",
+	301: "MOVED PERMANENTLY",
+	302: "FOUND",
+	303: "SEE OTHER",
+	304: "NOT MODIFIED",
+	305: "USE PROXY",
+	307: "TEMPORARY REDIRECT",
+	400: "BAD REQUEST",
+	401: "UNAUTHORIZED",
+	402: "PAYMENT REQUIRED",
+	403: "FORBIDDEN",
+	404: "NOT FOUND",
+	405: "METHOD NOT ALLOWED",
+	406: "NOT ACCEPTABLE",
+	407: "PROXY AUTHENTICATION REQUIRED",
+	408: "REQUEST TIME-OUT",
+	409: "CONFLICT",
+	410: "GONE",
+	411: "LENGTH REQUIRED",
+	412: "PRECONDITION FAILED",
+	413: "REQUEST ENTITY TOO LARGE",
+	414: "REQUEST-URI TOO LARGE",
+	415: "UNSUPPORTED MEDIA TYPE",
+	416: "REQUESTED RANGE NOT SATISFIABLE",
+	417: "EXPECTATION FAILED",
+	500: "INTERNAL SERVER ERROR",
+	501: "NOT IMPLEMENTED",
+	502: "BAD GATEWAY",
+	503: "SERVICE UNAVAILABLE",
+	504: "GATEWAY TIME-OUT",
+	505: "HTTP VERSION NOT SUPPORTED",
 }

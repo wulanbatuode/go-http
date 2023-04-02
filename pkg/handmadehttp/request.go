@@ -62,7 +62,7 @@ func (req *Request) readHeader(rd io.Reader) (err error) {
 			continue
 		}
 		if req.URI == "" {
-			tokens := SplitConvertFilter(strings.ToLower(string(buff)), " ", nil, func(s string) bool { return s != "" })
+			tokens := SplitConvertFilter(strings.ToUpper(string(buff)), " ", nil, func(s string) bool { return s != "" })
 			req.ReqMethod = Method(tokens[0])
 			req.URI = req.extractURIAndLoadParams(tokens[1])
 			if len(tokens) > 2 {
@@ -71,7 +71,7 @@ func (req *Request) readHeader(rd io.Reader) (err error) {
 			buff = buff[:0]
 		}
 		if len(buff) > 0 {
-			tokens := SplitConvertFilter(strings.ToLower(string(buff)), ":", nil, func(s string) bool { return s != "" })
+			tokens := SplitConvertFilter(strings.ToUpper(string(buff)), ":", nil, func(s string) bool { return s != "" })
 			if len(tokens) != 2 {
 				err = fmt.Errorf("%w with attr %s", ErrBadRequst, tokens)
 				return err

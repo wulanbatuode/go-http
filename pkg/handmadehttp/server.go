@@ -2,6 +2,9 @@ package handmadehttp
 
 import (
 	"net"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/exp/slog"
@@ -9,13 +12,15 @@ import (
 
 // TODO: howto unit test?
 type Server struct {
-	network      string
-	addr         string
-	timeout      time.Duration
-	listener     net.Listener
-	connChan     chan net.Conn
-	mutplexerGet *Multiplexer
+	network  string
+	addr     string
+	timeout  time.Duration
+	listener net.Listener
+	connChan chan net.Conn
 	// TODO: add suport to other methods
+	mutplexerGet *Multiplexer
+	running      int64
+	Wg           *sync.WaitGroup
 }
 
 func NewServer(network, addr string, timeout time.Duration) *Server {
@@ -26,17 +31,27 @@ func NewServer(network, addr string, timeout time.Duration) *Server {
 		listener:     nil,
 		connChan:     nil,
 		mutplexerGet: NewMultiplexer(nil),
+		running:      0,
+		Wg:           &sync.WaitGroup{},
 	}
 }
 
+func (s *Server) isRunning() bool {
+	return atomic.LoadInt64(&s.running) != 0
+}
+func (s *Server) setRunningState(target int64) {
+	atomic.StoreInt64(&s.running, target)
+}
 func (s *Server) AcceptConns(timeout time.Duration) {
 	defer func() {
 		if e := recover(); e != nil {
 			slog.Error("fatal error %s, acceptConns restart", e)
 			go s.AcceptConns(timeout)
+		} else {
+			s.Wg.Done()
 		}
 	}()
-	for {
+	for s.isRunning() {
 		conn, err := s.listener.Accept()
 		if err != nil {
 			slog.Warn("fail to accept, %s, %s", conn, err)
@@ -57,7 +72,7 @@ func (s *Server) AcceptConns(timeout time.Duration) {
 
 func (s *Server) HandleConns() {
 
-	for {
+	for s.isRunning() {
 		conn := <-s.connChan
 		go func(conn net.Conn) {
 			defer func() {
@@ -91,19 +106,15 @@ func (s *Server) HandleConns() {
 			}
 		}(conn)
 	}
+	s.Wg.Done()
 }
-func (s *Server) start() error {
-	lis, err := net.Listen(s.network, s.addr)
-	if err != nil {
-		lis.Close()
-		return err
-	}
-	connChan := make(chan net.Conn, MaxChanSize)
-	s.listener = lis
-	s.connChan = connChan
-	return nil
-}
+
+// FIXME: race condition
 func (s *Server) Stop() {
+	slog.Info("stopping server")
+	s.setRunningState(0)
+	s.Wg.Wait()
+	slog.Info("closing listener and chan")
 	if s.listener != nil {
 		s.listener.Close()
 		s.listener = nil
@@ -114,15 +125,22 @@ func (s *Server) Stop() {
 	}
 }
 func (s *Server) UpdateHandler(URI string, fn HandlerFunc) {
-	s.mutplexerGet.UpdateHandler(URI, fn)
+	s.mutplexerGet.UpdateHandler(strings.ToUpper(URI), fn)
 }
 func (s *Server) ListenAndServe() error {
-	err := s.start()
-	defer s.Stop()
+	// TODO: how to notice caller server is ready by chan?
+	slog.Info("starting server")
+	lis, err := net.Listen(s.network, s.addr)
 	if err != nil {
+		// lis.Close()
 		return err
 	}
+	connChan := make(chan net.Conn, MaxChanSize)
+	s.listener = lis
+	s.connChan = connChan
+	s.setRunningState(int64(1))
+	s.Wg.Add(2)
 	go s.AcceptConns(s.timeout)
-	s.HandleConns()
+	go s.HandleConns()
 	return nil
 }

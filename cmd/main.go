@@ -20,4 +20,5 @@ func main() {
 	if err != nil {
 		slog.Error("fail to start server %s", err)
 	}
+	s.Wg.Wait()
 }
