@@ -5,19 +5,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 )
-
-// func BenchmarkServerGetWithParam(b *testing.B) {
-
-// 	for i := 0; i < b.N; i++ {
-// 		client.Po
-// 	}
-
-// }
 
 func echoServer(network, addr string) *Server {
 	s := NewServer(network, addr, 5*time.Second)
@@ -28,6 +22,7 @@ func echoServer(network, addr string) *Server {
 		})
 	return s
 }
+
 func TestGetWithParam(t *testing.T) {
 	s := echoServer("tcp", "localhost:8080")
 	assert.NotNil(t, s)
@@ -55,27 +50,64 @@ func TestGetWithParam(t *testing.T) {
 		assert.Equal(t, fmt.Sprintf("/ECHO map[KEY:%d]", i), string(buff[:n]))
 		resp.Body.Close()
 	}
-	// s.Stop()
-	// t.Cleanup(func() {
-	// 	if s != nil {
-	// 		s.Stop()
-	// 	}
-	// })
+	t.Cleanup(func() {
+		if s != nil {
+			s.Stop()
+		}
+	})
 }
 
+var onceHmt sync.Once
+
 func BenchmarkEchoServer(b *testing.B) {
-	s := echoServer("tcp", "localhost:8080")
-	if s == nil {
-		b.FailNow()
-	}
-	go s.ListenAndServe()
-	//wait for server to start up
-	time.Sleep(time.Second)
+	var s *Server
+	onceHmt.Do(
+		func() {
+			s = echoServer("tcp", "localhost:8080")
+			if s == nil {
+				b.FailNow()
+			}
+			go s.ListenAndServe()
+			//wait for server to start up
+			time.Sleep(time.Second)
+		},
+	)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = http.Get(fmt.Sprintf("%s%d", "http://localhost:8080/echo?key=", i))
 		// assert.Equal()
 	}
-	// s.Stop()
+	b.Cleanup(func() {
+		if s != nil {
+			s.Stop()
+		}
+	})
+}
 
+var onceDefault sync.Once
+
+func BenchmarkDefaultEchoServer(b *testing.B) {
+	onceDefault.Do(
+		func() {
+			http.HandleFunc("/echo", func(w http.ResponseWriter, r *http.Request) {
+				queryValues, err := url.ParseQuery(r.URL.RawQuery)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusBadRequest)
+					return
+				}
+				key := queryValues.Get("key")
+				fmt.Fprintf(w, "key: %s\n", key)
+			})
+			fmt.Println("default http starting")
+			go http.ListenAndServe("localhost:8081", nil)
+		},
+	)
+	fmt.Println("reset timer")
+
+	//wait for server to start up
+	time.Sleep(time.Second)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = http.Get(fmt.Sprintf("%s%d", "http://localhost:8081/echo?key=", i))
+	}
 }

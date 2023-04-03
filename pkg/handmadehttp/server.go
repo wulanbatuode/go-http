@@ -42,13 +42,28 @@ func (s *Server) isRunning() bool {
 func (s *Server) setRunningState(target int64) {
 	atomic.StoreInt64(&s.running, target)
 }
+
 func (s *Server) AcceptConns(timeout time.Duration) {
+	for s.isRunning() {
+		// blocked here
+		err := s.AcceptConnsGoroutine(timeout)
+		if err == nil {
+			// peaceful exit
+			break
+		}
+	}
+	s.Wg.Done()
+}
+
+func (s *Server) AcceptConnsGoroutine(timeout time.Duration) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			slog.Error("fatal error %s, acceptConns restart", e)
-			go s.AcceptConns(timeout)
+			// FIXME: Too deep call if many errors.
+			// go s.AcceptConns(timeout)
+			err = e.(error)
 		} else {
-			s.Wg.Done()
+			err = nil
 		}
 	}()
 	for s.isRunning() {
@@ -68,12 +83,16 @@ func (s *Server) AcceptConns(timeout time.Duration) {
 			}
 		}(conn)
 	}
+	return err
 }
 
 func (s *Server) HandleConns() {
 
 	for s.isRunning() {
 		conn := <-s.connChan
+		if conn == nil {
+			continue
+		}
 		go func(conn net.Conn) {
 			defer func() {
 				if e := recover(); e != nil {
@@ -113,7 +132,6 @@ func (s *Server) HandleConns() {
 func (s *Server) Stop() {
 	slog.Info("stopping server")
 	s.setRunningState(0)
-	s.Wg.Wait()
 	slog.Info("closing listener and chan")
 	if s.listener != nil {
 		s.listener.Close()
@@ -123,6 +141,7 @@ func (s *Server) Stop() {
 		close(s.connChan)
 		s.connChan = nil
 	}
+	s.Wg.Wait()
 }
 func (s *Server) UpdateHandler(URI string, fn HandlerFunc) {
 	s.mutplexerGet.UpdateHandler(strings.ToUpper(URI), fn)

@@ -16,9 +16,15 @@ func main() {
 			res.SetContent([]byte(fmt.Sprintf("%s %s", req.URI, req.Param)))
 			return nil
 		})
-	err := s.ListenAndServe()
-	if err != nil {
-		slog.Error("fail to start server %s", err)
-	}
+	go s.ListenAndServe()
+	// if err != nil {
+	// 	slog.Error("fail to start server %s", err)
+	// }
+	slog.Info("xxxxx sleep 1 sec")
+	time.Sleep(time.Second)
+	slog.Info("stopping")
+	s.Stop()
+	slog.Info("wating")
 	s.Wg.Wait()
+	slog.Info("finish")
 }
